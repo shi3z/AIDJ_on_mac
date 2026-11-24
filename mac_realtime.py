@@ -58,6 +58,9 @@ def main():
     ap.add_argument("--size", type=int, default=512)
     ap.add_argument("--t", default="35,45", help="t_index_list (img2img strength; lower = more change)")
     ap.add_argument("--camera", type=int, default=0)
+    ap.add_argument("--video", default=None, help="use a video file instead of the webcam")
+    ap.add_argument("--record", default=None, help="save the side-by-side view to this .mp4")
+    ap.add_argument("--no-window", action="store_true", help="do not open a window (for recording)")
     ap.add_argument("--bench", action="store_true")
     ap.add_argument("--input", default=None, help="input image for --bench")
     args = ap.parse_args()
@@ -84,7 +87,7 @@ def main():
         Image.fromarray(cv2.cvtColor(to_bgr(out), cv2.COLOR_BGR2RGB)).save(f"bench_out_{args.size}_{len(t_index_list)}.png")
         return
 
-    cap = cv2.VideoCapture(args.camera)
+    cap = cv2.VideoCapture(args.video if args.video else args.camera)
     if not cap.isOpened():
         raise SystemExit("Camera could not be opened (check macOS camera permission for your terminal).")
 
@@ -100,11 +103,14 @@ def main():
 
     fps_ema, last = 0.0, time.perf_counter()
     asker = None
+    writer = None
     while True:
         ok, frame = cap.read()
         if not ok:
             break
-        frame = cv2.flip(center_crop_square(frame, args.size), 1)
+        frame = center_crop_square(frame, args.size)
+        if not args.video:
+            frame = cv2.flip(frame, 1)
         out = stream(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
         out_bgr = to_bgr(out)
 
@@ -113,6 +119,13 @@ def main():
         last = now
         view = np.hstack([frame, out_bgr])
         cv2.putText(view, f"{fps_ema:.1f} FPS", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        if args.record:
+            if writer is None:
+                writer = cv2.VideoWriter(args.record, cv2.VideoWriter_fourcc(*"mp4v"), 10,
+                                         (view.shape[1], view.shape[0]))
+            writer.write(view)
+        if args.no_window:
+            continue
         cv2.imshow("StreamDiffusion (MPS)", view)
 
         if new_prompt["v"]:
@@ -128,6 +141,8 @@ def main():
             asker.start()
 
     cap.release()
+    if writer is not None:
+        writer.release()
     cv2.destroyAllWindows()
 
 

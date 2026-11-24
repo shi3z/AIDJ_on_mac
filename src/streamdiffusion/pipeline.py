@@ -440,9 +440,7 @@ class StreamDiffusion:
     def __call__(
         self, x: Union[torch.Tensor, PIL.Image.Image, np.ndarray] = None
     ) -> torch.Tensor:
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
+        _t0 = time.perf_counter()
         if x is not None:
             x = self.image_processor.preprocess(x, self.height, self.width).to(
                 device=self.device, dtype=self.dtype
@@ -462,9 +460,11 @@ class StreamDiffusion:
         x_output = self.decode_image(x_0_pred_out).detach().clone()
 
         self.prev_image_result = x_output
-        end.record()
-        torch.cuda.synchronize()
-        inference_time = start.elapsed_time(end) / 1000
+        if str(self.device).startswith("cuda"):
+            torch.cuda.synchronize()
+        elif str(self.device).startswith("mps"):
+            torch.mps.synchronize()
+        inference_time = time.perf_counter() - _t0
         self.inference_time_ema = 0.9 * self.inference_time_ema + 0.1 * inference_time
         return x_output
 

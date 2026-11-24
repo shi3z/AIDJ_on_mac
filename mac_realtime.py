@@ -61,6 +61,8 @@ def main():
     ap.add_argument("--video", default=None, help="use a video file instead of the webcam")
     ap.add_argument("--record", default=None, help="save the side-by-side view to this .mp4")
     ap.add_argument("--no-window", action="store_true", help="do not open a window (for recording)")
+    ap.add_argument("--loop", action="store_true", help="loop the --video file")
+    ap.add_argument("--window-pos", default=None, help="x,y position of the window, e.g. 80,120")
     ap.add_argument("--bench", action="store_true")
     ap.add_argument("--input", default=None, help="input image for --bench")
     args = ap.parse_args()
@@ -101,11 +103,27 @@ def main():
         ok, frame = cap.read()
         stream(Image.fromarray(cv2.cvtColor(center_crop_square(frame, args.size), cv2.COLOR_BGR2RGB)))
 
+    import platform, subprocess
+    try:
+        chip = subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
+    except Exception:
+        chip = platform.machine()
+    label = f"{chip} / PyTorch MPS / {args.size}px"
+    win = "StreamDiffusion (MPS)"
+    if not args.no_window:
+        cv2.namedWindow(win)
+        if args.window_pos:
+            x, y = (int(v) for v in args.window_pos.split(","))
+            cv2.moveWindow(win, x, y)
+
     fps_ema, last = 0.0, time.perf_counter()
     asker = None
     writer = None
     while True:
         ok, frame = cap.read()
+        if not ok and args.video and args.loop:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ok, frame = cap.read()
         if not ok:
             break
         frame = center_crop_square(frame, args.size)
@@ -118,7 +136,10 @@ def main():
         fps_ema = 0.9 * fps_ema + 0.1 * (1.0 / (now - last))
         last = now
         view = np.hstack([frame, out_bgr])
-        cv2.putText(view, f"{fps_ema:.1f} FPS", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        for text, org, scale, color in ((f"{fps_ema:.1f} FPS", (10, 30), 0.9, (0, 255, 0)),
+                                        (label, (10, view.shape[0] - 12), 0.55, (255, 255, 255))):
+            cv2.putText(view, text, org, cv2.FONT_HERSHEY_SIMPLEX, scale, (0, 0, 0), 5)
+            cv2.putText(view, text, org, cv2.FONT_HERSHEY_SIMPLEX, scale, color, 2)
         if args.record:
             if writer is None:
                 writer = cv2.VideoWriter(args.record, cv2.VideoWriter_fourcc(*"mp4v"), 10,
@@ -126,7 +147,7 @@ def main():
             writer.write(view)
         if args.no_window:
             continue
-        cv2.imshow("StreamDiffusion (MPS)", view)
+        cv2.imshow(win, view)
 
         if new_prompt["v"]:
             print(f"prompt -> {new_prompt['v']}")

@@ -4,7 +4,7 @@ Realtime img2img with [StreamDiffusion](https://github.com/cumulo-autumn/StreamD
 
 ![demo](docs/demo.gif)
 
-*Left: input, right: StreamDiffusion output (sd-turbo + TAESD, 384x384, 1 step) at about 9 FPS on an M2 Max. Recorded with `mac_realtime.py --video ... --record ...`. The FPS counter is the live throughput.*
+*Screen recording of `mac_realtime.py` running live in a macOS window on an M2 Max (sd-turbo + TAESD, 384x384, 1 step, about 9 FPS). Left: input, right: StreamDiffusion output; the FPS counter shows the live throughput. A higher-quality MP4 is in [docs/demo.mp4](docs/demo.mp4).*
 
 ## What's changed from upstream
 - `src/streamdiffusion/pipeline.py`: the CUDA-only timing (`torch.cuda.Event` / `torch.cuda.synchronize`) is replaced with timing that works on any device (`torch.mps.synchronize()` on MPS).

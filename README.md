@@ -2,7 +2,7 @@
 
 AIDJ: realtime AI visuals on Apple Silicon, built on [StreamDiffusion](https://github.com/cumulo-autumn/StreamDiffusion) running with PyTorch MPS.
 
-It runs realtime img2img with [StreamDiffusion](https://github.com/cumulo-autumn/StreamDiffusion) on Apple Silicon, using PyTorch's MPS backend. No CUDA, TensorRT or xformers required.
+It runs StreamDiffusion img2img in realtime (webcam or video in, generated frames out) on the Mac GPU. No CUDA, TensorRT or xformers required.
 
 ![demo](docs/demo.gif)
 

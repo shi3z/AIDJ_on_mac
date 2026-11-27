@@ -206,3 +206,6 @@ __pycache__/
 
 models/RealESR*
 *.safetensors
+midi_map.json
+aidj_pattern.json
+worlde_map.json
